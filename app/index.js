@@ -17,14 +17,13 @@ function App() {
   const toggleTheme = () => {
     setTheme((theme) => theme === 'light' ? 'dark' : 'light');
   }
-  const themeProviderValue = React.useMemo(() => ({theme, toggleTheme}), [theme]);
- 
+
   return (
     <Router>
-      <ThemeProvider value={themeProviderValue}>
+      <ThemeProvider value={theme}>
         <div className={theme}>
           <div className='container'>
-            <Nav />
+            <Nav toggleTheme={toggleTheme}/>
 
             <React.Suspense fallback={<Loading />} >
               <Switch>
