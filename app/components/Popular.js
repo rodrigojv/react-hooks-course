@@ -127,7 +127,7 @@ function popularReducer(state, action) {
 
 function useRepos(selectedLanguage) {
   const {loading } = useQuery(GET_REPOS, {
-    variables:  {query: `stars:>1 language:${selectedLanguage}`},
+    variables:  {query: `stars:>1 language:${selectedLanguage} sort:stars`},
     onCompleted: (data) =>  {
       dispatch({type: 'success', selectedLanguage, repos: mapToRepos(data)})
     },
