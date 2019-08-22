@@ -1,13 +1,19 @@
 import React from 'react'
 import ThemeContext from '../contexts/theme'
 import { NavLink } from 'react-router-dom'
+import AuthContext from '../contexts/auth';
 
 const activeStyle = {
   color: 'rgb(187, 46, 31)'
 }
 
+
 export default function Nav ({toggleTheme}) {
   const theme = React.useContext(ThemeContext);
+  const token = React.useContext(AuthContext);
+  if (!token) {
+    return null;
+  }
   return (
     <nav className='row space-between'>
       <ul className='row nav'>
