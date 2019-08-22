@@ -1,10 +1,40 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { fetchPopularRepos } from '../utils/api'
+import {useQuery, useLazyQuery} from "@apollo/react-hooks";
+import gql from "graphql-tag";
+
 import { FaUser, FaStar, FaCodeBranch, FaExclamationTriangle } from 'react-icons/fa'
 import Card from './Card'
 import Loading from './Loading'
 import Tooltip from './Tooltip'
+
+const GET_REPOS = gql`
+  query GET_REPOS($query: String! ) { 
+    search(first: 30, query: $query, type: REPOSITORY) {
+      edges {
+        node {
+          ... on Repository {
+            name
+            description
+            url
+            forkCount
+            stargazers {
+              totalCount
+            }
+            issues (states: OPEN) {
+              totalCount
+            }
+            owner {
+              avatarUrl
+              login
+            }
+          }
+        }
+      }
+    }
+  }
+`;
 
 function LangaugesNav ({ selected, onUpdateLanguage }) {
   const languages = ['All', 'JavaScript', 'Ruby', 'Java', 'CSS', 'Python']
@@ -34,15 +64,15 @@ function ReposGrid ({ repos }) {
   return (
     <ul className='grid space-around'>
       {repos.map((repo, index) => {
-        const { name, owner, html_url, stargazers_count, forks, open_issues } = repo
-        const { login, avatar_url } = owner
+        const { name, owner, url, stargazers, forkCount, issues } = repo
+        const { login, avatarUrl } = owner
 
         return (
-          <li key={html_url}>
+          <li key={url}>
             <Card
               header={`#${index + 1}`}
-              avatar={avatar_url}
-              href={html_url}
+              avatar={avatarUrl}
+              href={url}
               name={login}
             >
               <ul className='card-list'>
@@ -56,15 +86,15 @@ function ReposGrid ({ repos }) {
                 </li>
                 <li>
                   <FaStar color='rgb(255, 215, 0)' size={22} />
-                  {stargazers_count.toLocaleString()} stars
+                  {stargazers.totalCount.toLocaleString()} stars
                 </li>
                 <li>
                   <FaCodeBranch color='rgb(129, 195, 245)' size={22} />
-                  {forks.toLocaleString()} forks
+                  {forkCount.toLocaleString()} forks
                 </li>
                 <li>
                   <FaExclamationTriangle color='rgb(241, 138, 147)' size={22} />
-                  {open_issues.toLocaleString()} open
+                  {issues.totalCount.toLocaleString()} open
                 </li>
               </ul>
             </Card>
@@ -95,27 +125,35 @@ function popularReducer(state, action) {
   }
 }
 
-export default function Popular() {
-  const [selectedLanguage, setSelectedLanguage] = React.useState('All');
+function useRepos(selectedLanguage) {
+  const {loading } = useQuery(GET_REPOS, {
+    variables:  {query: `stars:>1 language:${selectedLanguage}`},
+    onCompleted: (data) =>  {
+      dispatch({type: 'success', selectedLanguage, repos: mapToRepos(data)})
+    },
+    onError: (error) => dispatch({type: 'error', error})
+  });
+
   const [state, dispatch] = React.useReducer(popularReducer, {
     error: null,
   });
-  const languagesRef = React.useRef([]);
   
-  React.useEffect(() => {
-   if (languagesRef.current.includes(selectedLanguage) === false) {
-     languagesRef.current.push(selectedLanguage);
-     fetchPopularRepos(selectedLanguage)
-       .then(repos => {
-         dispatch({type: "success", selectedLanguage, repos })
-       }).catch(error => dispatch({type: "error", error}))
-   }   
-  },[languagesRef, selectedLanguage]);
+  function mapToRepos(data) {
+    return data.search.edges.map(edge => edge.node);
+  }
+
+  return {loading, state}
+}
+
+export default function Popular() {
+  
+  const [selectedLanguage, setSelectedLanguage] = React.useState('All');
+  const {loading, state} = useRepos(selectedLanguage);
   
   const isLoading = () => {
-    return !state[selectedLanguage] && state.error === null
+    return loading && !state[selectedLanguage] && state.error === null
   };
-  
+
   return (
     <React.Fragment>
       <LangaugesNav
